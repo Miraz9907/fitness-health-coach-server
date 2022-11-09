@@ -40,7 +40,7 @@ async function run(){
             res.send(service);
         });
 
-        //for review
+       
         app.get('/review', async(req, res) =>{
             let query = {};
             if(req.query.service){
@@ -48,10 +48,16 @@ async function run(){
                     service:req.query.service
                 }
             }
+            else if(req.query.email){
+                query = {
+                    email:req.query.email
+                }
+            }
             
             const cursor = reviewCollection.find(query);
             const review = await cursor.toArray();
-            res.send(review);
+            let sortData = review.sort((x,y) => y.dateTime.localeCompare(x.dateTime));
+            res.send(sortData);
         });
 
         app.post('/review', async(req, res)=>{
