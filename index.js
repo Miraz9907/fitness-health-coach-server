@@ -18,13 +18,34 @@ const client = new MongoClient(uri, {
   serverApi: ServerApiVersion.v1,
 });
 
+function verifyJWT(req, res, next){
+    const authHeader = req.headers.authorization;
+    console.log(authHeader);
+    if(!authHeader){
+        return res.status(401).send({message: 'unauthorized access'})
+    }
+    const token = authHeader.split(' ')[1];
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function(err, decoded){
+        
+       if(err){
+        return res.status(401).send({message: 'unauthorized access'})
+       }
+       req.decoded = decoded;
+       next();
+    })
+}
 
 async function run() {
   try {
     const serviceCollection = client.db("healthCoach").collection("services");
     const reviewCollection = client.db("healthCoach").collection("reviews");
 
-   
+    app.post('/jwt', (req, res) =>{
+        const user = req.body;
+        const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '1d'})
+        res.send({token})
+    });
+
     app.get("/services", async (req, res) => {
       const query = {};
       const cursor = serviceCollection.find(query);
@@ -93,8 +114,12 @@ async function run() {
     });
 
     //for get specific review
-    app.get("/review", async (req, res) => {
-        
+    app.get("/review",verifyJWT, async (req, res) => {
+        const decoded = req.decoded;
+
+        if(decoded.email !== req.query.email){
+            res.status(403).send({message: 'unauthorized access'})
+        }
       let query = {};
       if (req.query.service) {
         query = {
